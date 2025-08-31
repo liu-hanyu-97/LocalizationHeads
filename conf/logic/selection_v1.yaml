@@ -1,0 +1,17 @@
+# Head selection and post-processing logic
+
+top_k: 5
+
+threshold:
+  method: chord      # chord (elbow) on head sums
+  min_keep: 1        # keep at least this many heads
+
+entropy:
+  binarize_threshold: 0.001
+
+smoothing:
+  sigma: 1.0         # Gaussian sigma for combining heads
+
+mask:
+  method: mean_relu  # relu(M - mean(M)) > 0
+

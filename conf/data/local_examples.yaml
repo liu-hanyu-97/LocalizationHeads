@@ -1,0 +1,17 @@
+# Data and output paths
+
+# Stage-level inputs
+image_file: ""
+query: ""
+attention_file: ""
+
+# Batch settings (keep JSONL schema: id, prompt, image_path)
+data_file: examples/localization_data.jsonl
+process_all: true
+start_index: 0
+end_index: -1
+
+# Output root
+output_dir: outputs/results/
+visualize_batch: false
+

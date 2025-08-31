@@ -1,0 +1,17 @@
+# Model configuration (Hugging Face path)
+name: liuhaotian/llava-v1.5-7b
+base: null
+cache_dir: null
+# vision_tower_cache_dir: null
+
+# Conversation template for prompt formatting
+conv_mode: referseg
+
+# Generation settings (keep small; we only need few tokens)
+max_new_tokens: 10
+do_sample: false
+num_beams: 1
+
+# Attention collection behavior
+use_generate: false  # if true, run generate (save output tokens); else use forward
+use_flash_attn: false  # always keep false

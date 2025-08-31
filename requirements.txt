@@ -1,0 +1,23 @@
+# Minimal requirements to run `_overhaul/pipeline.py`
+# Pinned to align with this repo's dependency_pip.txt where applicable.
+
+torch
+transformers
+accelerate
+huggingface-hub
+safetensors
+sentencepiece
+tokenizers
+protobuf
+
+hydra-core
+omegaconf
+colorlog
+hydra-colorlog
+
+numpy
+scipy
+pillow
+matplotlib
+requests
+google

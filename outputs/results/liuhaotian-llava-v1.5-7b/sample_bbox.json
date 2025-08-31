@@ -1,0 +1,39 @@
+{
+  "bbox_xyxy": [
+    0,
+    22,
+    274,
+    182
+  ],
+  "image_size": [
+    275,
+    183
+  ],
+  "selected_heads": [
+    {
+      "layer": 22,
+      "head": 22,
+      "spatial_entropy": 0.6569905281066895
+    },
+    {
+      "layer": 11,
+      "head": 30,
+      "spatial_entropy": 0.8432788848876953
+    },
+    {
+      "layer": 23,
+      "head": 8,
+      "spatial_entropy": 0.9845079779624939
+    },
+    {
+      "layer": 10,
+      "head": 8,
+      "spatial_entropy": 0.9874607920646667
+    },
+    {
+      "layer": 25,
+      "head": 21,
+      "spatial_entropy": 1.001224160194397
+    }
+  ]
+}
