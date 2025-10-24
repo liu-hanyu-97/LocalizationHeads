@@ -27,11 +27,6 @@ def parse_args() -> argparse.Namespace:
         help="Directory that holds `<id>_bbox.json` predictions.",
     )
     parser.add_argument(
-        "--id-field",
-        default=None,
-        help="Optional field name to use as the identifier (defaults: id -> question_id -> file_name).",
-    )
-    parser.add_argument(
         "--iou-thresholds",
         default="0.25,0.5,0.75",
         help="Comma-separated IoU thresholds for success rates.",
@@ -93,15 +88,6 @@ def load_jsonl(path: Path) -> List[Dict]:
     return records
 
 
-def select_id(entry: Dict, preferred: str = None) -> str:
-    if preferred and preferred in entry:
-        return str(entry[preferred])
-    for key in ("id", "question_id", "sample_id", "image_id", "file_name"):
-        if key in entry and entry[key] not in (None, ""):
-            return str(entry[key])
-    raise KeyError("No suitable identifier field found in entry; specify --id-field.")
-
-
 def main() -> None:
     args = parse_args()
     dataset_path = Path(args.dataset_jsonl)
@@ -122,11 +108,12 @@ def main() -> None:
     success_counts = {thr: 0 for thr in thresholds}
     evaluated = 0
 
-    for entry in gt_records:
-        try:
-            sample_id = select_id(entry, args.id_field)
-        except KeyError:
-            continue
+    for i, entry in enumerate(gt_records):
+        if "question_id" in entry:
+            sample_id = str(entry["question_id"])
+        else:
+            sample_id = str(entry.get("id", f"item_{i}"))
+            raise Warning("Entry missing 'question_id'; using 'id' or fallback.")
 
         pred_path = pred_root / f"{sample_id}_bbox.json"
         if not pred_path.exists():
