@@ -7,6 +7,7 @@ from typing import List, Dict
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
+from tqdm import tqdm
 
 from collector import collect_attention, load_model_from_cfg
 from analyze import load_attention_file, analyze_heads
@@ -124,7 +125,8 @@ def run_batch(cfg: DictConfig) -> None:
 
     model_bundle = load_model_from_cfg(cfg)
 
-    for i, entry in enumerate(work):
+    print(f"Processing {len(work)} items from index {start} to {end}...")
+    for i, entry in enumerate(tqdm.tqdm(work), desc="Processing batch"):
         sid = entry.get('id', f'item_{i}')
         image_file = entry.get('image', '')
         query = entry.get('prompt', '')
