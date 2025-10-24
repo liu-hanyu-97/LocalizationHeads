@@ -127,7 +127,12 @@ def run_batch(cfg: DictConfig) -> None:
 
     print(f"Processing {len(work)} items from index {start} to {end}...")
     for i, entry in enumerate(tqdm(work,  desc="Processing batch")):
-        sid = entry.get('id', f'item_{i}')
+        if 'id' in entry:
+            sid = entry.get('id')
+        elif 'question_id' in entry:
+            sid = str(entry.get('question_id'))
+        else:
+            sid = f'item_{i}'
         image_file = entry.get('image', '')
         query = entry.get('prompt', '')
         res = run_single(hydra.utils.instantiate(cfg, _convert_="object")) if False else None
