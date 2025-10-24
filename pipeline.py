@@ -8,7 +8,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
 
-from collector import collect_attention
+from collector import collect_attention, load_model_from_cfg
 from analyze import load_attention_file, analyze_heads
 from bbox import (
     combine_heads,
@@ -122,13 +122,15 @@ def run_batch(cfg: DictConfig) -> None:
     end = len(lines) if cfg.data.end_index < 0 else min(len(lines), cfg.data.end_index)
     work = lines if cfg.data.process_all else lines[start:end]
 
+    model_bundle = load_model_from_cfg(cfg)
+
     for i, entry in enumerate(work):
         sid = entry.get('id', f'item_{i}')
         image_file = entry.get('image', '')
         query = entry.get('prompt', '')
         res = run_single(hydra.utils.instantiate(cfg, _convert_="object")) if False else None
         # We cannot deep-copy DictConfig with instantiate easily; call functions directly
-        attn_file = collect_attention(cfg, image_file, query, _out_root(cfg), sid)
+        attn_file = collect_attention(cfg, image_file, query, _out_root(cfg), sid, model_bundle=model_bundle)
         attn, meta = load_attention_file(attn_file)
         selected = analyze_heads(cfg, attn, meta)
         model_dir = _model_dir(cfg)

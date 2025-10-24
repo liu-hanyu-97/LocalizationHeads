@@ -137,7 +137,7 @@ def _generate_collect(model, tokenizer, image_processor, input_ids, image_tensor
     return attn_last_to_vis, generated_text
 
 
-def collect_attention(cfg, image_file: str, query: str, save_dir: str, save_id: str) -> str:
+def collect_attention(cfg, image_file: str, query: str, save_dir: str, save_id: str, model_bundle=None) -> str:
     """Run one forward pass and save attention focused on image tokens.
 
     Saves a pickle with dict: {
@@ -146,7 +146,10 @@ def collect_attention(cfg, image_file: str, query: str, save_dir: str, save_id: 
     }
     Returns the saved file path.
     """
-    tokenizer, model, image_processor, _, model_name_str = load_model_from_cfg(cfg)
+    if model_bundle is None:
+        tokenizer, model, image_processor, _, model_name_str = load_model_from_cfg(cfg)
+    else:
+        tokenizer, model, image_processor, _, model_name_str = model_bundle
 
     # Prepare image
     image = load_image(image_file)
