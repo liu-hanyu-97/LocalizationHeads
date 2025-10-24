@@ -1,17 +1,24 @@
 # Your Large Vision-Language Model Only Needs A Few Attention Heads For Visual Grounding [CVPR 2025 Highlight]
 ## Table of Contents
 
-- [TL;DR](#tldr)
-- [Highlights](#highlights)
-- [Experiment Dataset](#experiment-dataset)
-- [Requirements](#requirements)
-- [Quick Start](#quick-start)
-- [Input JSONL Schema](#input-jsonl-schema)
-- [Outputs](#outputs)
-- [How Attention Is Collected](#how-attention-is-collected)
-- [Repository Layout](#repository-layout)
-- [Tips & Troubleshooting](#tips--troubleshooting)
-- [License](#license)
+- [Your Large Vision-Language Model Only Needs A Few Attention Heads For Visual Grounding \[CVPR 2025 Highlight\]](#your-large-vision-language-model-only-needs-a-few-attention-heads-for-visual-grounding-cvpr-2025-highlight)
+  - [Table of Contents](#table-of-contents)
+  - [TL;DR](#tldr)
+  - [Highlights](#highlights)
+  - [Experiment Dataset](#experiment-dataset)
+  - [Requirements](#requirements)
+  - [Quick Start](#quick-start)
+  - [Configuration (Hydra)](#configuration-hydra)
+  - [Commands](#commands)
+    - [Experiments for batch (We had 10 trials of experiments with a set consisting of 1,000 samples.)](#experiments-for-batch-we-had-10-trials-of-experiments-with-a-set-consisting-of-1000-samples)
+    - [Single image/query](#single-imagequery)
+  - [Input JSONL Schema](#input-jsonl-schema)
+  - [Outputs](#outputs)
+    - [Evaluate predicted boxes](#evaluate-predicted-boxes)
+  - [How Attention Is Collected](#how-attention-is-collected)
+  - [Repository Layout](#repository-layout)
+  - [Tips \& Troubleshooting](#tips--troubleshooting)
+  - [License](#license)
 
 ## TL;DR
 This repository provides a one-shot evaluation protocol designed to support the discovery and validation of our primary contribution "Localization Heads" in Large Vision-Language Models.
@@ -167,13 +174,37 @@ Required keys: `id`, `prompt`, `image_path`.
 
 Under `data.output_dir/<model_name_sanitized>/` for single items (or per-id for batch):
 
-- `<id>.pkl`: attention dict with `attn` tensor `[L, H, 1, V]` and `meta`
+- `<id>.pkl.gz`: compressed attention dict with `attn` tensor `[L, H, 1, V]` (float16 by default) and `meta`
 - `<id>_analysis.pkl`: ranked head list (top by spatial entropy)
 - `<id>_topK.png`: image + top-K attention maps
 - `<id>_mask.png`: binary pseudo-mask at image resolution
 - `<id>_bbox.json`: bbox (xyxy), image size, and selected head details
+- `<id>_meta.json`: convenience metadata dump (set `storage.attention.keep_meta_pickle=true` to keep `_meta.pkl`)
 
-`meta` includes: `image_file`, `query`, `model_name`, `image_size`, `vis_len`, `patch_size`, `num_layers`, `num_heads`, and optionally `generated_text` when `use_generate=true`.
+`meta` includes: `image_file`, `query`, `model_name`, `image_size`, `vis_len`, `patch_size`, `num_layers`, `num_heads`, `attn_dtype`, and optionally `generated_text` when `use_generate=true`.
+
+### Evaluate predicted boxes
+
+1. Prepare a JSONL with ground-truth boxes (`bbox` as `[x, y, width, height]`) and include a stable identifier per row (e.g. `id` or `question_id`).
+2. Run the batch pipeline to generate predictions:
+
+   ```python
+   python pipeline.py stage=batch \
+     data.data_file=/path/to/your.jsonl \
+     data.output_dir=outputs/results/ \
+     storage.attention.compress=true
+   ```
+
+3. Evaluate IoU:
+
+   ```python
+   python evaluate_boxes.py \
+     --dataset-jsonl /path/to/your.jsonl \
+     --pred-root outputs/results/liuhaotian-llava-v1.5-7b \
+     --id-field question_id
+   ```
+
+The script reports mean/median IoU and success rates for thresholds (defaults: 0.25, 0.50, 0.75). Adjust `--iou-thresholds` as needed.
 
 ## How Attention Is Collected
 
