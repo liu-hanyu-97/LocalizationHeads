@@ -109,11 +109,7 @@ def main() -> None:
     evaluated = 0
 
     for i, entry in enumerate(gt_records):
-        if "question_id" in entry:
-            sample_id = str(entry["question_id"])
-        else:
-            sample_id = str(entry.get("id", f"item_{i}"))
-            raise Warning("Entry missing 'question_id'; using 'id' or fallback.")
+        sample_id = str(entry["question_id"])
 
         pred_path = pred_root / f"{sample_id}_bbox.json"
         if not pred_path.exists():
