@@ -126,7 +126,7 @@ def run_batch(cfg: DictConfig) -> None:
     model_bundle = load_model_from_cfg(cfg)
 
     print(f"Processing {len(work)} items from index {start} to {end}...")
-    for i, entry in enumerate(tqdm.tqdm(work), desc="Processing batch"):
+    for i, entry in enumerate(tqdm(work), desc="Processing batch"):
         sid = entry.get('id', f'item_{i}')
         image_file = entry.get('image', '')
         query = entry.get('prompt', '')
