@@ -72,6 +72,7 @@ def convert_refcoco_to_prompt_image(
 
             obj = {
                 "id": next_id,
+                "question_id": rec.get("question_id", next_id),
                 "prompt": prompt,
                 image_key: to_rel(img_path),
             }
