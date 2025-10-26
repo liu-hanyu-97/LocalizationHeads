@@ -64,7 +64,7 @@ def pick_heads_from_pkls(
     n_files = 0
     V_first = None
     for p in pkls:
-        attn, _ = load_attn(p)
+        attn = load_attn(p)
         L, H, Q, V = attn.shape
         if V_first is None:
             V_first = V
