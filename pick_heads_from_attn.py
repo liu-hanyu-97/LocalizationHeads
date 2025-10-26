@@ -10,6 +10,7 @@ def load_attn(pkl_path):
     期望返回 (attn[L,H,1,V], meta_dict或None)
     """
     obj = np.load(pkl_path, allow_pickle=True)
+    print(obj)
     attn = obj['attn']
     # 转换为 np.ndarray
     attn = np.array(attn)
