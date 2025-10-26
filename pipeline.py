@@ -132,6 +132,7 @@ def run_batch(cfg: DictConfig) -> None:
         query = entry.get('prompt', '')
         res = run_single(hydra.utils.instantiate(cfg, _convert_="object")) if False else None
         # We cannot deep-copy DictConfig with instantiate easily; call functions directly
+        print(image_file, query, sid)
         attn_file = collect_attention(cfg, image_file, query, _out_root(cfg), sid, model_bundle=model_bundle)
         attn, meta = load_attention_file(attn_file)
         selected = analyze_heads(cfg, attn, meta)
