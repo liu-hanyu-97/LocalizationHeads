@@ -77,6 +77,7 @@ def pick_heads_from_pkls(
         S_img = attn[:,:,query_index,:].sum(axis=-1)  # [L,H]
         if S_sums is None:
             S_sums = np.zeros_like(S_img, dtype=np.float64)
+        print(S_sums, S_img)
         S_sums += S_img
         n_files += 1
     assert n_files > 0, "没有有效样本用于统计平均 Attention Sum"
