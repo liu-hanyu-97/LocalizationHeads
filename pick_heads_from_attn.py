@@ -11,6 +11,8 @@ def load_attn(pkl_path):
     """
     obj = np.load(pkl_path, allow_pickle=True)
     attn = obj['attn']
+    # 转换为 np.ndarray
+    attn = np.array(attn)
     assert attn.ndim == 4, f"{pkl_path} attn.ndim={attn.ndim}, 期望 [L,H,1,V]"
     return attn
 
