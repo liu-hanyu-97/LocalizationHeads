@@ -10,7 +10,6 @@ def load_attn(pkl_path):
     期望返回 (attn[L,H,1,V], meta_dict或None)
     """
     obj = np.load(pkl_path, allow_pickle=True)
-    print(obj)
     attn = obj['attn']
     # 转换为 np.ndarray
     attn = np.array(attn)
@@ -59,7 +58,10 @@ def pick_heads_from_pkls(
     query_index=0,
 ):
     root = Path(root_dir)
+    # 不包含里面带有meta的文件
     pkls = sorted(glob.glob(str(root/"**/*.pkl"), recursive=True))
+    pkls = [p for p in pkls if "meta" not in p]
+
     assert pkls, f"找不到任何 .pkl：{root}"
 
     # ---------- Pass 1: 平均 Attention Sum & 肘点筛选 ----------
