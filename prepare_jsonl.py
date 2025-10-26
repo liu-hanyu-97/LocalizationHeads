@@ -7,7 +7,7 @@ def convert_refcoco_to_prompt_image(
     output_jsonl: str,
     *,
     image_key: str = "image",       # 你示例里叫 "image"；如果要配合某些代码可改成 "image_path"
-    use_answer_first: bool = True,  # 优先用 answer 列表；设为 False 则直接用 question
+    prompt_mode: str = "answer_first", # prompt 生成模式，可选 "answer_select" 或 "answer_all"
     answer_index: int = 0,          # 用第几个答案（默认第 1 个）
     relative_to: str | None = None, # 如果想把 image 写成相对路径，可传入根目录，比如 "/content"
     id_start: int = 0               # 起始 id
@@ -49,12 +49,17 @@ def convert_refcoco_to_prompt_image(
 
             # 选 prompt
             prompt = ""
-            if use_answer_first and isinstance(rec.get("answer"), list):
+            if prompt_mode == "answer_first" and isinstance(rec.get("answer"), list):
                 # 去掉空白并去重，取第 answer_index 个
                 answers = [str(a).strip() for a in rec["answer"] if isinstance(a, str) and str(a).strip()]
                 answers = list(dict.fromkeys(answers))  # 保留顺序去重
                 if answers and 0 <= answer_index < len(answers):
                     prompt = answers[answer_index]
+            elif prompt_mode == "answer_all" and isinstance(rec.get("answer"), list):
+                answers = [str(a).strip() for a in rec["answer"] if isinstance(a, str) and str(a).strip()]
+                answers = list(dict.fromkeys(answers))  # 保留顺序去重
+                if answers:
+                    prompt = ", ".join(answers)
             if not prompt:
                 prompt = str(rec.get("question", "")).strip()
             prompt = ensure_punct(prompt)
