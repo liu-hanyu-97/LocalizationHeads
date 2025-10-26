@@ -29,7 +29,8 @@ def convert_refcoco_to_prompt_image(
         if relative_to:
             try:
                 return str(path.resolve().relative_to(Path(relative_to).resolve()))
-            except Exception:
+            except Exception as e:
+                print(f"❌ 路径转换失败: {e}")
                 return str(path)
         return str(path)
 
