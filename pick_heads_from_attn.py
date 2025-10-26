@@ -61,6 +61,7 @@ def pick_heads_from_pkls(
     # 不包含里面带有meta的文件
     pkls = sorted(glob.glob(str(root/"**/*.pkl"), recursive=True))
     pkls = [p for p in pkls if "meta" not in p]
+    print(f"Found {len(pkls)} .pkl files under {root}")
 
     assert pkls, f"找不到任何 .pkl：{root}"
 
@@ -82,7 +83,6 @@ def pick_heads_from_pkls(
         S_img = attn[:,:,query_index,:].sum(axis=-1)  # [L,H]
         if S_sums is None:
             S_sums = np.zeros_like(S_img, dtype=np.float64)
-        print(S_sums.shape, S_img.shape)
         S_sums += S_img
         n_files += 1
     assert n_files > 0, "没有有效样本用于统计平均 Attention Sum"
@@ -98,7 +98,7 @@ def pick_heads_from_pkls(
     counter = Counter()
     skipped = 0
     for p in pkls:
-        attn, _ = load_attn(p)
+        attn = load_attn(p)
         L, H, Q, V = attn.shape
         if V != V_first:
             skipped += 1
