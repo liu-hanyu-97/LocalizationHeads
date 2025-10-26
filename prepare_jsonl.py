@@ -6,7 +6,6 @@ def convert_refcoco_to_prompt_image(
     image_root: str,
     output_jsonl: str,
     *,
-    image_key: str = "image",       # 你示例里叫 "image"；如果要配合某些代码可改成 "image_path"
     prompt_mode: str = "answer_first", # prompt 生成模式，可选 "answer_select" 或 "answer_all"
     answer_index: int = 0,          # 用第几个答案（默认第 1 个）
     relative_to: str | None = None, # 如果想把 image 写成相对路径，可传入根目录，比如 "/content"
@@ -83,7 +82,7 @@ def convert_refcoco_to_prompt_image(
                 "id": next_id,
                 "question_id": rec.get("question_id"),
                 "prompt": prompt,
-                image_key: to_rel(img_path),
+                "image": to_rel(img_path),
             }
             fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
             next_id += 1
@@ -97,7 +96,6 @@ def convert_refcoco_to_prompt_image(
 #     input_jsonl="/content/refcoco/testA.jsonl",
 #     image_root="/content/refcoco/testA",
 #     output_jsonl="/content/refcoco/testA_prompts.jsonl",
-#     image_key="image",          # 你要的键名
 #     use_answer_first=True,      # 优先用 answer 作为 prompt
 #     answer_index=0,             # 取第一个答案
 #     relative_to=None,     # 可选：写成相对路径，如 "refcoco/testA/COCO_....jpg"
