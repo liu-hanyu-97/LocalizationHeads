@@ -44,7 +44,8 @@ def convert_refcoco_to_prompt_image(
             n_in += 1
             try:
                 rec = json.loads(line)
-            except Exception:
+            except Exception as e:
+                print(f"❌ 解析失败: {e}")
                 continue
 
             # 选 prompt
