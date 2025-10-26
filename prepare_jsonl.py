@@ -38,6 +38,7 @@ def convert_refcoco_to_prompt_image(
     next_id = id_start
 
     with in_path.open("r", encoding="utf-8") as fin, out_path.open("w", encoding="utf-8") as fout:
+        print(fin.readlines())
         for line in fin:
             print(line)
             line = line.strip()
