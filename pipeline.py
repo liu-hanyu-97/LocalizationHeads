@@ -2,7 +2,10 @@
 import os
 import json
 import pickle
+import csv
+from collections import Counter
 from typing import List, Dict
+from pathlib import Path
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -152,6 +155,117 @@ def run_batch(cfg: DictConfig) -> None:
         save_bbox_json(bbox_path, bbox_img, meta["image_size"], selected[: cfg.logic.top_k])
 
 
+def _base_id_from_filename(path: Path) -> str:
+    name = path.name
+    if name.endswith(".pkl.gz"):
+        return name[: -len(".pkl.gz")]
+    if name.endswith(".pkl"):
+        return name[: -len(".pkl")]
+    return path.stem
+
+
+def _load_attention_generic(path: Path):
+    if path.suffix == ".gz" and path.name.endswith(".pkl.gz"):
+        import gzip
+        with gzip.open(path, "rb") as f:
+            obj = pickle.load(f)
+        if isinstance(obj, dict) and "attn" in obj:
+            return obj["attn"], obj.get("meta", {})
+        if torch.is_tensor(obj):
+            return obj, {}
+        raise ValueError(f"Unsupported attention file format: {path}")
+    return load_attention_file(str(path))
+
+
+def run_batch_analyze(cfg: DictConfig) -> Dict:
+    candidate_dir = cfg.data.get("batch_attention_dir", "")
+    attn_dir = Path(candidate_dir).expanduser() if candidate_dir else Path(_out_root(cfg)) / _model_dir(cfg)
+    attn_dir = attn_dir.resolve()
+    if not attn_dir.is_dir():
+        raise FileNotFoundError(f"Attention directory not found: {attn_dir}")
+
+    def is_raw_attn_file(p: Path) -> bool:
+        if not p.is_file():
+            return False
+        name = p.name
+        if name.endswith(("_analysis.pkl", "_analysis.pkl.gz", "_meta.pkl", "_meta.pkl.gz")):
+            return False
+        return name.endswith(".pkl") or name.endswith(".pkl.gz")
+
+    attn_files = sorted([p for p in attn_dir.iterdir() if is_raw_attn_file(p)])
+    if not attn_files:
+        print(f"No attention pickle files found in {attn_dir}")
+        return {
+            "directory": str(attn_dir),
+            "num_files": 0,
+            "summary_json": "",
+            "counts_csv": "",
+            "top_heads_preview": [],
+        }
+
+    top_k = max(1, int(cfg.logic.top_k))
+    head_counter: Counter = Counter()
+    file_summaries = []
+
+    for path in tqdm(attn_files, desc="Analyzing attention files"):
+        attn, meta = _load_attention_generic(path)
+        selected = analyze_heads(cfg, attn, meta)
+        top_heads = selected[:top_k]
+
+        base_id = _base_id_from_filename(path)
+        analysis_path = attn_dir / f"{base_id}_analysis.pkl"
+        with open(analysis_path, "wb") as f:
+            pickle.dump(selected, f)
+
+        file_summaries.append({
+            "id": base_id,
+            "attention_file": path.name,
+            "image_file": meta.get("image_file"),
+            "query": meta.get("query"),
+            "top_heads": top_heads,
+        })
+        for head in top_heads:
+            head_counter[(head["layer"], head["head"])] += 1
+
+    total_files = len(file_summaries)
+    aggregated = [
+        {
+            "layer": layer,
+            "head": head,
+            "count": count,
+            "frequency": count / total_files,
+        }
+        for (layer, head), count in head_counter.most_common()
+    ]
+
+    summary_data = {
+        "directory": str(attn_dir),
+        "model_dir": _model_dir(cfg),
+        "top_k": top_k,
+        "total_files": total_files,
+        "head_frequency": aggregated,
+        "files": file_summaries,
+    }
+    summary_path = attn_dir / "batch_selected_heads.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary_data, f, ensure_ascii=False, indent=2)
+
+    counts_csv_path = attn_dir / "batch_selected_heads_counts.csv"
+    with open(counts_csv_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["layer", "head", "count", "frequency"])
+        writer.writeheader()
+        for row in aggregated:
+            writer.writerow(row)
+
+    return {
+        "directory": str(attn_dir),
+        "num_files": total_files,
+        "summary_json": str(summary_path),
+        "counts_csv": str(counts_csv_path),
+        "top_heads_preview": aggregated[: min(10, len(aggregated))],
+    }
+
+
 @hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
@@ -171,6 +285,9 @@ def main(cfg: DictConfig):
         print(json.dumps({k: v for k, v in out.items()}, indent=2))
     elif cfg.stage == "batch":
         run_batch(cfg)
+    elif cfg.stage == "batch_analyze":
+        summary = run_batch_analyze(cfg)
+        print(json.dumps(summary, indent=2))
     else:
         raise ValueError(f"Invalid stage: {cfg.stage}")
 

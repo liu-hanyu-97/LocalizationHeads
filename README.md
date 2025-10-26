@@ -117,6 +117,7 @@ Configs live under `conf/` and are composed in `conf/config.yaml`.
   - `process_all`, `start_index`, `end_index`
   - `output_dir`: outputs root (default `_overhaul/outputs/localization_heads`)
   - `visualize_batch`: save figures for each batch item
+  - `batch_attention_dir`: optional override when running `stage=batch_analyze`
 
 ## Commands
 
@@ -127,6 +128,13 @@ Configs live under `conf/` and are composed in `conf/config.yaml`.
 python pipeline.py stage=batch \
   data.data_file=examples/localization_data.jsonl \
   data.process_all=true
+```
+
+- Analyze existing batch outputs (summarize selected heads for paper tables)
+
+```python
+python pipeline.py stage=batch_analyze \
+  data.batch_attention_dir=outputs/results/liuhaotian-llava-v1.5-7b
 ```
 
 ### Single image/query
