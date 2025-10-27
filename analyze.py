@@ -92,6 +92,7 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
             sums.append(s)
 
     thr_val = elbow_chord(sums) if cfg.logic.threshold.method == "chord" else min(sums)
+    print(thr_val)
 
     # Analyze Criterion 2 only for heads above thr_val (by value)
     results: List[Dict] = []
