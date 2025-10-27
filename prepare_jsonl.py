@@ -8,7 +8,6 @@ def convert_refcoco_to_prompt_image(
     *,
     prompt_mode: str = "answer_first", # prompt 生成模式，可选 "answer_select" 或 "answer_all"
     answer_index: int = 0,          # 用第几个答案（默认第 1 个）
-    relative_to: str | None = None, # 如果想把 image 写成相对路径，可传入根目录，比如 "/content"
     id_start: int = 0               # 起始 id
 ):
     in_path = Path(input_jsonl)
@@ -24,24 +23,15 @@ def convert_refcoco_to_prompt_image(
             s += "."
         return s
 
-    def to_rel(path: Path) -> str:
-        if relative_to:
-            try:
-                return str(path.resolve().relative_to(Path(relative_to).resolve()))
-            except Exception as e:
-                print(f"❌ 路径转换失败: {e}")
-                return str(path)
-        return str(path)
-
     n_in, n_out = 0, 0
     next_id = id_start
 
     with in_path.open("r", encoding="utf-8") as fin, out_path.open("w", encoding="utf-8") as fout:
         print(fin.readlines())
         for line in fin:
-            print(line)
             line = line.strip()
             if not line:
+                print("空行，跳过")
                 continue
             n_in += 1
             try:
@@ -82,7 +72,7 @@ def convert_refcoco_to_prompt_image(
                 "id": next_id,
                 "question_id": rec.get("question_id"),
                 "prompt": prompt,
-                "image": to_rel(img_path),
+                "image": img_path,
             }
             fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
             next_id += 1
@@ -98,7 +88,6 @@ def convert_refcoco_to_prompt_image(
 #     output_jsonl="/content/refcoco/testA_prompts.jsonl",
 #     use_answer_first=True,      # 优先用 answer 作为 prompt
 #     answer_index=0,             # 取第一个答案
-#     relative_to=None,     # 可选：写成相对路径，如 "refcoco/testA/COCO_....jpg"
 #     id_start=0
 # )
 
