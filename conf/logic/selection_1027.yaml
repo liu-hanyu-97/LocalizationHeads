@@ -14,8 +14,8 @@ smoothing:
 mask:
   method: mean_relu
 
-# Manual head preference: analyze_heads() tries these first, but they must still
-# satisfy the threshold/entropy filters; otherwise it falls back to automatic picks.
+# Manual head preference: analyze_heads() will use these directly (in order) and skip
+# the automatic threshold/entropy-based selection during inference.
 # Update top_k to match the number of heads you want to combine downstream.
 manual_heads:
   - layer: 14

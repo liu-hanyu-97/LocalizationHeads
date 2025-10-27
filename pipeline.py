@@ -13,7 +13,7 @@ import torch
 from tqdm import tqdm
 
 from collector import collect_attention, load_model_from_cfg
-from analyze import load_attention_file, analyze_heads
+from analyze import load_attention_file, analyze_heads, select_heads_for_inference
 from bbox import (
     combine_heads,
     binarize_mean_relu,
@@ -38,6 +38,24 @@ def _out_root(cfg) -> str:
     return cfg.data.output_dir
 
 
+def build_localization_outputs(cfg: DictConfig, attn: torch.Tensor, meta: Dict, heads: List[Dict]) -> Dict:
+    """Build combined mask/bbox outputs using the selected heads."""
+    if not heads:
+        raise ValueError("No heads provided for localization inference.")
+    P = int(meta.get("patch_size", int(attn.shape[-1] ** 0.5)))
+    combo = combine_heads(attn, heads, P=P, sigma=cfg.logic.smoothing.sigma)
+    mask_grid = binarize_mean_relu(combo)
+    bbox_grid = bbox_from_mask(mask_grid)
+    mask_img = upscale_mask(mask_grid, meta["image_size"])  # [H, W]
+    bbox_img = scale_bbox_to_image(bbox_grid, meta["image_size"], P)
+    return {
+        "mask_grid": mask_grid,
+        "bbox_grid": bbox_grid,
+        "mask_img": mask_img,
+        "bbox_img": bbox_img,
+    }
+
+
 def run_single(cfg: DictConfig) -> Dict:
     os.makedirs(_out_root(cfg), exist_ok=True)
     model_dir = _model_dir(cfg)
@@ -59,6 +77,7 @@ def run_single(cfg: DictConfig) -> Dict:
     # Stage: analyze
     attn, meta = load_attention_file(attn_file)
     selected = analyze_heads(cfg, attn, meta)
+    heads_for_inference = select_heads_for_inference(cfg, selected)
 
     # Save analysis
     with open(attn_file.replace('.pkl', '_analysis.pkl'), 'wb') as f:
@@ -67,21 +86,16 @@ def run_single(cfg: DictConfig) -> Dict:
     # Visualization
     if cfg.save_fig:
         fig_path = os.path.join(attn_root, f"{save_id}_top{cfg.logic.top_k}.png")
-        plot_heads_grid(attn, selected[: cfg.logic.top_k], meta, fig_path, show_plot=cfg.show_plot)
+        plot_heads_grid(attn, heads_for_inference, meta, fig_path, show_plot=cfg.show_plot)
 
     # Combine to bbox/mask
-    P = int(meta["patch_size"])  # grid size
-    combo = combine_heads(attn, selected[: cfg.logic.top_k], P=P, sigma=cfg.logic.smoothing.sigma)
-    mask_grid = binarize_mean_relu(combo)
-    bbox_grid = bbox_from_mask(mask_grid)
-    mask_img = upscale_mask(mask_grid, meta["image_size"])  # [H,W] uint8
-    bbox_img = scale_bbox_to_image(bbox_grid, meta["image_size"], P)
+    outputs = build_localization_outputs(cfg, attn, meta, heads_for_inference)
 
     # Save bbox/mask
     mask_path = os.path.join(attn_root, f"{save_id}_mask.png")
-    save_mask_png(mask_path, mask_img)
+    save_mask_png(mask_path, outputs["mask_img"])
     bbox_path = os.path.join(attn_root, f"{save_id}_bbox.json")
-    save_bbox_json(bbox_path, bbox_img, meta["image_size"], selected[: cfg.logic.top_k])
+    save_bbox_json(bbox_path, outputs["bbox_img"], meta["image_size"], heads_for_inference)
 
     return {"attn_file": attn_file, "analysis": selected, "mask": mask_path, "bbox": bbox_path}
 
@@ -89,6 +103,7 @@ def run_single(cfg: DictConfig) -> Dict:
 def run_analyze_visualize(cfg: DictConfig) -> None:
     attn, meta = load_attention_file(cfg.data.attention_file)
     selected = analyze_heads(cfg, attn, meta)
+    heads_for_inference = select_heads_for_inference(cfg, selected)
     model_dir = _model_dir(cfg)
     out_dir = os.path.join(_out_root(cfg), model_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -96,16 +111,11 @@ def run_analyze_visualize(cfg: DictConfig) -> None:
         pickle.dump(selected, f)
     if cfg.save_fig:
         fig_path = cfg.data.attention_file.replace('.pkl', f'_top{cfg.logic.top_k}.png')
-        plot_heads_grid(attn, selected[: cfg.logic.top_k], meta, fig_path, cfg.show_plot)
+        plot_heads_grid(attn, heads_for_inference, meta, fig_path, cfg.show_plot)
     # Optionally bbox/mask
-    P = int(meta.get("patch_size", int((attn.shape[-1]) ** 0.5)))
-    combo = combine_heads(attn, selected[: cfg.logic.top_k], P=P, sigma=cfg.logic.smoothing.sigma)
-    mask_grid = binarize_mean_relu(combo)
-    bbox_grid = bbox_from_mask(mask_grid)
-    mask_img = upscale_mask(mask_grid, meta["image_size"])  # [H,W]
-    bbox_img = scale_bbox_to_image(bbox_grid, meta["image_size"], P)
-    save_mask_png(cfg.data.attention_file.replace('.pkl', '_mask.png'), mask_img)
-    save_bbox_json(cfg.data.attention_file.replace('.pkl', '_bbox.json'), bbox_img, meta["image_size"], selected[: cfg.logic.top_k])
+    outputs = build_localization_outputs(cfg, attn, meta, heads_for_inference)
+    save_mask_png(cfg.data.attention_file.replace('.pkl', '_mask.png'), outputs["mask_img"])
+    save_bbox_json(cfg.data.attention_file.replace('.pkl', '_bbox.json'), outputs["bbox_img"], meta["image_size"], heads_for_inference)
 
 
 def run_batch(cfg: DictConfig) -> None:
@@ -138,21 +148,17 @@ def run_batch(cfg: DictConfig) -> None:
         attn_file = collect_attention(cfg, image_file, query, _out_root(cfg), sid, model_bundle=model_bundle)
         attn, meta = load_attention_file(attn_file)
         selected = analyze_heads(cfg, attn, meta)
+        heads_for_inference = select_heads_for_inference(cfg, selected)
         model_dir = _model_dir(cfg)
         attn_root = os.path.join(_out_root(cfg), model_dir)
         if cfg.save_fig and cfg.data.visualize_batch:
             fig_path = os.path.join(attn_root, f"{sid}_top{cfg.logic.top_k}.png")
-            plot_heads_grid(attn, selected[: cfg.logic.top_k], meta, fig_path, show_plot=cfg.show_plot)
-        P = int(meta["patch_size"])  # grid size
-        combo = combine_heads(attn, selected[: cfg.logic.top_k], P=P, sigma=cfg.logic.smoothing.sigma)
-        mask_grid = binarize_mean_relu(combo)
-        bbox_grid = bbox_from_mask(mask_grid)
-        mask_img = upscale_mask(mask_grid, meta["image_size"])  # [H,W]
-        bbox_img = scale_bbox_to_image(bbox_grid, meta["image_size"], P)
+            plot_heads_grid(attn, heads_for_inference, meta, fig_path, show_plot=cfg.show_plot)
+        outputs = build_localization_outputs(cfg, attn, meta, heads_for_inference)
         mask_path = os.path.join(attn_root, f"{sid}_mask.png")
         bbox_path = os.path.join(attn_root, f"{sid}_bbox.json")
-        save_mask_png(mask_path, mask_img)
-        save_bbox_json(bbox_path, bbox_img, meta["image_size"], selected[: cfg.logic.top_k])
+        save_mask_png(mask_path, outputs["mask_img"])
+        save_bbox_json(bbox_path, outputs["bbox_img"], meta["image_size"], heads_for_inference)
 
 
 def _base_id_from_filename(path: Path) -> str:

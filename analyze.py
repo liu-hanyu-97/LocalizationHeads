@@ -63,25 +63,43 @@ def elbow_chord(values: List[float]) -> float:
     return float(y[elbow_i])
 
 
+def manual_heads_selection(cfg, results: List[Dict]) -> List[Dict]:
+    manual_cfg = getattr(cfg.logic, "manual_heads", None)
+    if not manual_cfg:
+        return []
+    manual_rank = {}
+    manual_pairs: List[tuple] = []
+    for idx, item in enumerate(manual_cfg):
+        try:
+            pair = (int(item["layer"]), int(item["head"]))
+            manual_pairs.append(pair)
+            manual_rank[pair] = idx
+        except (KeyError, TypeError, ValueError):
+            continue
+    results_by_key = {(r["layer"], r["head"]): r for r in results}
+    manual_selected: List[Dict] = []
+    missing = []
+    for pair in manual_pairs:
+        res = results_by_key.get(pair)
+        if res is None:
+            missing.append(pair)
+        else:
+            manual_selected.append(res)
+    if missing:
+        print(f"[manual_heads_selection] Warning: manual heads not found in tensor: {missing}")
+    if manual_selected:
+        manual_selected.sort(key=lambda r: manual_rank.get((r["layer"], r["head"]), 0))
+    return manual_selected
+
+
 def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
-    """Analyze heads and return a ranked list.
+    """Analyze heads and return a ranked list. Manual heads (if configured) are handled by manual_heads_selection.
 
     attn: [L, H, 1, V]
     meta: includes patch_size (P)
     """
     L, H, _, V = attn.shape
     P = int(meta.get("patch_size", int(np.sqrt(V))))
-    manual_cfg = getattr(cfg.logic, "manual_heads", None)
-    manual_pairs: List[tuple] = []
-    manual_rank = {}
-    if manual_cfg:
-        for idx, item in enumerate(manual_cfg):
-            try:
-                pair = (int(item["layer"]), int(item["head"]))
-                manual_pairs.append(pair)
-                manual_rank[pair] = idx
-            except (KeyError, TypeError, ValueError):
-                continue
 
     # Criterion 1: head sums over image patches
     sums = []
@@ -119,22 +137,9 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
                 "num_components": n_comp,
             })
 
-    if manual_pairs:
-        results_by_key = {(r["layer"], r["head"]): r for r in results}
-        manual_selected: List[Dict] = []
-        missing = []
-        for pair in manual_pairs:
-            res = results_by_key.get(pair)
-            if res is None:
-                missing.append(pair)
-                continue
-            if np.isfinite(res["spatial_entropy"]) and res["attn_sum"] >= thr_val and not res["bottom_row_focus"] and res["layer"] > 1:
-                manual_selected.append(res)
-        if missing:
-            print(f"[analyze_heads] Warning: manual heads not found in tensor: {missing}")
-        if manual_selected:
-            manual_selected.sort(key=lambda r: manual_rank.get((r["layer"], r["head"]), 0))
-            return manual_selected
+    manual_selected = manual_heads_selection(cfg, results)
+    if manual_selected:
+        return manual_selected
 
     # Filter and sort: keep heads above threshold, prefer non-bottom-row
     kept = [r for r in results if np.isfinite(r["spatial_entropy"]) and r["attn_sum"] >= thr_val and not r["bottom_row_focus"] and r["layer"] > 1]
@@ -145,3 +150,12 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
 
     kept.sort(key=lambda x: x["spatial_entropy"])  # ascending
     return kept
+
+
+def select_heads_for_inference(cfg, ranked_heads: List[Dict]) -> List[Dict]:
+    """Return the heads to use for inference (manual override if available, otherwise top_k)."""
+    manual_selected = manual_heads_selection(cfg, ranked_heads)
+    if manual_selected:
+        return manual_selected
+    k = max(1, int(cfg.logic.top_k))
+    return ranked_heads[:k]
