@@ -133,6 +133,7 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
         if missing:
             print(f"[analyze_heads] Warning: manual heads not found in tensor: {missing}")
         if manual_selected:
+            print(manual_selected)
             return manual_selected
 
     # Filter and sort: keep heads above threshold, prefer non-bottom-row
