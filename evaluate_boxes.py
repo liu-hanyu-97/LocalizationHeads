@@ -108,7 +108,6 @@ def main() -> None:
     success_counts = {thr: 0 for thr in thresholds}
     evaluated = 0
     for i, entry in enumerate(gt_records):
-        print(entry)
         sample_id = str(entry["question_id"])
         pred_path = pred_root / f"{sample_id}_bbox.json"
         if not pred_path.exists():
@@ -117,6 +116,7 @@ def main() -> None:
 
         with pred_path.open("r", encoding="utf-8") as f:
             pred_obj = json.load(f)
+            print(pred_obj)
         pred_bbox = pred_obj.get("bbox_xyxy") or pred_obj.get("bbox")
         if not pred_bbox:
             degenerate_preds.append(sample_id)
