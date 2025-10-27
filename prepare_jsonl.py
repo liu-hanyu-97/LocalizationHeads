@@ -1,4 +1,5 @@
-import os, json
+import json
+import argparse
 from pathlib import Path
 
 def convert_refcoco_to_prompt_image(
@@ -73,7 +74,7 @@ def convert_refcoco_to_prompt_image(
                 "id": next_id,
                 "question_id": rec.get("question_id"),
                 "prompt": prompt,
-                "image": img_path,
+                "image": str(img_path),
             }
             fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
             next_id += 1
@@ -82,13 +83,36 @@ def convert_refcoco_to_prompt_image(
     print(f"✅ 转换完成：读入 {n_in} 行 → 写出 {n_out} 行 → {out_path}")
     return
 
+def main():
+    parser = argparse.ArgumentParser(description="Convert RefCOCO-style JSONL to prompt+image JSONL")
+    parser.add_argument("--input_jsonl", required=True, help="Path to input JSONL file")
+    parser.add_argument("--image_root", required=True, help="Directory containing images referenced by file_name")
+    parser.add_argument("--output_jsonl", required=True, help="Path to write output JSONL")
+    parser.add_argument("--prompt_mode", choices=["answer_first", "answer_all"], default="answer_first",
+                        help="How to form the prompt from answers")
+    parser.add_argument("--answer_index", type=int, default=0, help="Index of answer to use when answer_first")
+    parser.add_argument("--id_start", type=int, default=0, help="Starting ID for generated items")
+
+    args = parser.parse_args()
+    convert_refcoco_to_prompt_image(
+        input_jsonl=args.input_jsonl,
+        image_root=args.image_root,
+        output_jsonl=args.output_jsonl,
+        prompt_mode=args.prompt_mode,
+        answer_index=args.answer_index,
+        id_start=args.id_start,
+    )
+
+
+if __name__ == "__main__":
+    main()
+
 # Example usage:
 # convert_refcoco_to_prompt_image(
 #     input_jsonl="/content/refcoco/testA.jsonl",
 #     image_root="/content/refcoco/testA",
 #     output_jsonl="/content/refcoco/testA_prompts.jsonl",
-#     use_answer_first=True,      # 优先用 answer 作为 prompt
-#     answer_index=0,             # 取第一个答案
+#     prompt_mode="answer_first", # 优先用 answer 作为 prompt
+#     answer_index=0,              # 取第一个答案
 #     id_start=0
 # )
-
