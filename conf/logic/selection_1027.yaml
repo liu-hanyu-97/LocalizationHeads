@@ -1,0 +1,29 @@
+# Head selection configuration with manual override example
+top_k: 5
+
+threshold:
+  method: chord
+  min_keep: 1
+
+entropy:
+  binarize_threshold: 0.001
+
+smoothing:
+  sigma: 1.0
+
+mask:
+  method: mean_relu
+
+# Manual head override: when present analyze_heads() will prefer this list.
+# Update top_k to match the number of heads you want to combine downstream.
+manual_heads:
+  - layer: 14
+    head: 24
+  - layer: 14
+    head: 26
+  - layer: 14
+    head: 29
+  - layer: 10
+    head: 29
+  - layer: 10
+    head: 23

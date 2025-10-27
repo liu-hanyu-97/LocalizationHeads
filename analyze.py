@@ -71,6 +71,17 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
     """
     L, H, _, V = attn.shape
     P = int(meta.get("patch_size", int(np.sqrt(V))))
+    manual_cfg = getattr(cfg.logic, "manual_heads", None)
+    manual_pairs = []
+    manual_lookup = set()
+    if manual_cfg:
+        for item in manual_cfg:
+            try:
+                pair = (int(item["layer"]), int(item["head"]))
+                manual_pairs.append(pair)
+                manual_lookup.add(pair)
+            except (KeyError, TypeError, ValueError):
+                continue
 
     # Criterion 1: head sums over image patches
     sums = []
@@ -88,7 +99,8 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
         for h in range(H):
             s = sums[idx]
             idx += 1
-            if s < thr_val:
+            force_include = (l, h) in manual_lookup
+            if s < thr_val and not force_include:
                 se = float("inf")
                 bottom_row_focus = False
                 n_comp = 0
@@ -108,6 +120,21 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
                 "num_components": n_comp,
             })
 
+    if manual_pairs:
+        results_by_key = {(r["layer"], r["head"]): r for r in results}
+        manual_selected = []
+        missing = []
+        for pair in manual_pairs:
+            res = results_by_key.get(pair)
+            if res:
+                manual_selected.append(res)
+            else:
+                missing.append(pair)
+        if missing:
+            print(f"[analyze_heads] Warning: manual heads not found in tensor: {missing}")
+        if manual_selected:
+            return manual_selected
+
     # Filter and sort: keep heads above threshold, prefer non-bottom-row
     kept = [r for r in results if np.isfinite(r["spatial_entropy"]) and r["attn_sum"] >= thr_val and not r["bottom_row_focus"] and r["layer"] > 1]
     if len(kept) < cfg.logic.threshold.min_keep:
@@ -117,4 +144,3 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
 
     kept.sort(key=lambda x: x["spatial_entropy"])  # ascending
     return kept
-
