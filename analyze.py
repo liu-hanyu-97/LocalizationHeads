@@ -72,6 +72,7 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
     L, H, _, V = attn.shape
     P = int(meta.get("patch_size", int(np.sqrt(V))))
     manual_cfg = getattr(cfg.logic, "manual_heads", None)
+    print(manual_cfg)
     manual_pairs = []
     manual_lookup = set()
     if manual_cfg:
