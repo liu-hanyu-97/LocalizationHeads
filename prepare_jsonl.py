@@ -27,7 +27,9 @@ def convert_refcoco_to_prompt_image(
     next_id = id_start
 
     with in_path.open("r", encoding="utf-8") as fin, out_path.open("w", encoding="utf-8") as fout:
-        for line in fin:
+        lines = fin.readlines()
+        print(f"总行数: {len(lines)}")
+        for line in lines:
             line = line.strip()
             if not line:
                 print("空行，跳过")
