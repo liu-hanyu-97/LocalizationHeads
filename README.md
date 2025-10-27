@@ -110,7 +110,7 @@ Configs live under `conf/` and are composed in `conf/config.yaml`.
   - `entropy.binarize_threshold`: threshold to build components after ReLU(mean-centered)
   - `smoothing.sigma`: Gaussian sigma before combining heads
   - `mask.method`: `mean_relu` (fixed in this version)
-  - `manual_heads`: optional list of `{layer, head}` pairs to override automatic selection
+  - `manual_heads`: optional ordered list of `{layer, head}` pairs; entries must still pass the threshold/entropy filters, otherwise the automatic selector is used
 
 - `conf/data/local_examples.yaml`
   - `image_file`, `query`, `attention_file`

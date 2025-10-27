@@ -72,15 +72,14 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
     L, H, _, V = attn.shape
     P = int(meta.get("patch_size", int(np.sqrt(V))))
     manual_cfg = getattr(cfg.logic, "manual_heads", None)
-    print(manual_cfg)
-    manual_pairs = []
-    manual_lookup = set()
+    manual_pairs: List[tuple] = []
+    manual_rank = {}
     if manual_cfg:
-        for item in manual_cfg:
+        for idx, item in enumerate(manual_cfg):
             try:
                 pair = (int(item["layer"]), int(item["head"]))
                 manual_pairs.append(pair)
-                manual_lookup.add(pair)
+                manual_rank[pair] = idx
             except (KeyError, TypeError, ValueError):
                 continue
 
@@ -92,7 +91,6 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
             sums.append(s)
 
     thr_val = elbow_chord(sums) if cfg.logic.threshold.method == "chord" else min(sums)
-    print(thr_val)
 
     # Analyze Criterion 2 only for heads above thr_val (by value)
     results: List[Dict] = []
@@ -101,8 +99,7 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
         for h in range(H):
             s = sums[idx]
             idx += 1
-            force_include = (l, h) in manual_lookup
-            if s < thr_val and not force_include:
+            if s < thr_val:
                 se = float("inf")
                 bottom_row_focus = False
                 n_comp = 0
@@ -124,17 +121,19 @@ def analyze_heads(cfg, attn: torch.Tensor, meta: Dict) -> List[Dict]:
 
     if manual_pairs:
         results_by_key = {(r["layer"], r["head"]): r for r in results}
-        manual_selected = []
+        manual_selected: List[Dict] = []
         missing = []
         for pair in manual_pairs:
             res = results_by_key.get(pair)
-            if res:
-                manual_selected.append(res)
-            else:
+            if res is None:
                 missing.append(pair)
+                continue
+            if np.isfinite(res["spatial_entropy"]) and res["attn_sum"] >= thr_val and not res["bottom_row_focus"] and res["layer"] > 1:
+                manual_selected.append(res)
         if missing:
             print(f"[analyze_heads] Warning: manual heads not found in tensor: {missing}")
         if manual_selected:
+            manual_selected.sort(key=lambda r: manual_rank.get((r["layer"], r["head"]), 0))
             return manual_selected
 
     # Filter and sort: keep heads above threshold, prefer non-bottom-row

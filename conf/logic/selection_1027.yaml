@@ -14,7 +14,8 @@ smoothing:
 mask:
   method: mean_relu
 
-# Manual head override: when present analyze_heads() will prefer this list.
+# Manual head preference: analyze_heads() tries these first, but they must still
+# satisfy the threshold/entropy filters; otherwise it falls back to automatic picks.
 # Update top_k to match the number of heads you want to combine downstream.
 manual_heads:
   - layer: 14
