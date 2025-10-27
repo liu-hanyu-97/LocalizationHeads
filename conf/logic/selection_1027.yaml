@@ -1,12 +1,12 @@
 # Head selection configuration with manual override example
-top_k: 5
+top_k: 3
 
 threshold:
   method: chord
   min_keep: 1
 
 entropy:
-  binarize_threshold: 0.001
+  binarize_threshold: 0.1
 
 smoothing:
   sigma: 1.0
