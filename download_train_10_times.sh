@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eu pipefail
+set -euo pipefail
 
 ROOT_DIR="${1:-.}"
 NUM_IMAGES="${2:-1000}"
@@ -8,7 +8,7 @@ ANN_ID="${4:-jxu124/refcoco}"
 
 COCO_ID="${5:-visual-layer/coco-2014-vl-enriched}"
 
-for seed in {1..10}; do
+for seed in $(seq 1 10); do
   subset="train_${NUM_IMAGES}_seed${seed}"
   echo ">>> Seed ${seed} → subset ${subset}"
   python download_dataset.py \
