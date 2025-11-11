@@ -257,7 +257,7 @@ def build_refcoco_train_subset(
     save_annotations_jsonl(ann_subset, base_dir / f"{subset_name}.jsonl", drop_image_col="image", overwrite=overwrite)
 
     # 3) 仅下载命中的 COCO train2014 图片（streaming）
-    coco_stream = load_dataset(coco_dataset_id, split="train", streaming=True)
+    coco_stream = load_dataset(coco_dataset_id, split="train", streaming=False)
     chosen_set = set(chosen_ids)
 
     def iter_matching() -> Iterator[dict]:
