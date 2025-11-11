@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -eu pipefail
+
 ROOT_DIR="${1:-.}"
 NUM_IMAGES="${2:-1000}"
 BASE_DIR="${3:-"$ROOT_DIR/data/refcoco"}"
