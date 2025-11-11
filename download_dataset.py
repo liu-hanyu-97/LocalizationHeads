@@ -335,9 +335,6 @@ def resolve_dirs(args):
 
 
 def main() -> None:
-    # 允许省略子命令（自动插入 download）
-    if len(sys.argv) > 1 and sys.argv[1] not in {"download", "subset", "-h", "--help"}:
-        sys.argv.insert(1, "download")
 
     parser = build_parser()
     args = parser.parse_args()

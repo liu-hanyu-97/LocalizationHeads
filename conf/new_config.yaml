@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - model: llava15_7b
+  - logic: selection_v1
+  - data: local_examples
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d-%H-%M-%S}
+  job:
+    chdir: false
+
+# Pipeline stage: collect | analyze | visualize | pipeline | batch
+stage: pipeline
+
+# General visualization/output toggles
+save_fig: true
+show_plot: false
+
+# Device: use CUDA device by id; set -1 for CPU; or 'auto'
+device_id: 0
+device: auto
+
