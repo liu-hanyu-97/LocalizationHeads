@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu pipefail
 
 ROOT_DIR="${1:-.}"
 NUM_IMAGES="${2:-1000}"
